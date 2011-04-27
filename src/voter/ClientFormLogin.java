@@ -32,6 +32,8 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
+
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.NameValuePair;
@@ -44,25 +46,81 @@ import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.protocol.HTTP;
 import org.apache.http.util.EntityUtils;
 
+import com.google.gson.Gson;
+
 /**
- * This program will automatically vote for the tum-tum-pa competition
- * GET /tumtumpa_usa_voting/request.json.php?r=vote&v=25&cid=81028&ckey=878746&format=jsonp&callback=jsonp1303925617610&_=1303925660055 HTTP/1.1
+ * This program will automatically vote for the tum-tum-pa competition GET
+ * /tumtumpa_usa_voting
+ * /request.json.php?r=vote&v=25&cid=81028&ckey=878746&format
+ * =jsonp&callback=jsonp1303925617610&_=1303925660055 HTTP/1.1
  */
 public class ClientFormLogin {
 
 	public static void main(String[] args) {
+		int votes = 0;
+		int tries = 0;
+		Random r = new Random(40L);
+		// lets get it to vote just as many times as we need
+		while (votes < Integer.MAX_VALUE - 1) {
+			try {
+				// TODO: need to pull the while outside the try
+
+				boolean voted = tumVote();
+
+				if (voted) {
+					votes++;
+					tries = 0;
+
+					// wait 25min + 0-11min
+					Thread.sleep(1500000 + r.nextInt(660000));
+					System.out.println("Voted!");
+				}else{
+					System.out.println("NO Vote. prob captcha.");
+					if(tries < 3){
+						
+					}else{
+						// wait a while longer
+						// 45min + 0-20min
+						Thread.sleep(2700000 + r.nextInt(1200000));
+					}
+				}
+
+			} catch (Exception e) {
+				System.out.println("Vote Failed");
+				e.printStackTrace();
+				if (tries < 3) {
+					tries++;
+				} else {
+					return;
+				}
+			}
+		}
 
 	}
 
-	public static void tumVote() throws Exception {
+	public static boolean tumVote() throws Exception {
 		DefaultHttpClient httpclient = new DefaultHttpClient();
 		try {
-			HttpGet httpget2 = new HttpGet("http://gamezaion.com/index.php?page=vote");
+			// //Get the captcha
+
+			// http://redbulli.com//tumtumpa_usa_voting/request.json.php?r=captcha&format=jsonp
+			String captchaRequest = "http://redbulli.com//tumtumpa_usa_voting/request.json.php?r=captcha&format=json";
+			HttpGet httpget2 = new HttpGet(captchaRequest);
 
 			HttpResponse response2 = httpclient.execute(httpget2);
 			HttpEntity entity2 = response2.getEntity();
 
-			System.out.println("Respone was: " + response2.getStatusLine());
+			// Response should be
+			// {"errors":[],"cid":85442,"image":"c27041114393527721b.jpg"}
+
+			// retrieve the output and display it in console
+			String rdata = ClientFormLogin.convertInputStreamToString(response2.getEntity().getContent());
+			System.out.print(rdata);
+
+			// put the json into an object
+			Gson gson = new Gson();
+			Captcha captchaObject = gson.fromJson(rdata, Captcha.class);
+
 			EntityUtils.consume(entity2);
 
 			System.out.println("Initial set of cookies:");
@@ -75,24 +133,39 @@ public class ClientFormLogin {
 				}
 			}
 
+			// //Run the captcha through the ocr
+			downloadCaptchaImage(captchaObject.getImageURL());
+			String captchaText = reverseCaptcha(captchaObject.getImageName());
+
+			// //Build the new get url with the params
+
 			String domain = "http://redbulli.com/tumtumpa_usa_voting/request.json.php?r=vote";
 			// v is the video id
 			String v = "&v=25";
 			// cid is the captcha-id
-			String cid = "&cid=27931";
-			//ckey is what the user entered into the text field
-			String ckey = "&ckey=907867";
-			//format is the type we want back
-			String format = "&format=jsonp";
-			
+			String cid = "&cid=" + captchaObject.getCid();
+			// ckey is what the user entered into the text field
+			String ckey = "&ckey=" + captchaText;
+			// format is the type we want back
+			String format = "&format=json";
+
 			String sRequest = domain + v + cid + ckey + format;
-			
+
 			HttpGet httpget = new HttpGet(sRequest);
-			
+
 			HttpResponse response = httpclient.execute(httpget);
 			HttpEntity entity = response.getEntity();
 
-			System.out.println("Respone was: " + response.getStatusLine());
+			// System.out.println("Respone was: " + response.getStatusLine());
+
+			// retrieve the output and display it in console
+			String voteResponseData = ClientFormLogin.convertInputStreamToString(response.getEntity().getContent());
+			System.out.print(voteResponseData);
+
+			// put the json into an object
+			Gson gson2 = new Gson();
+			VoteResponse voteResponseObject = gson2.fromJson(voteResponseData, VoteResponse.class);
+
 			EntityUtils.consume(entity);
 
 			System.out.println("New set of cookies:");
@@ -104,45 +177,117 @@ public class ClientFormLogin {
 					System.out.println("- " + cookies.get(i).toString());
 				}
 			}
-			
+
 			// the results can be either
-			//jsonp1303924843141({"errors":[],"success":1});
+			// jsonp1303924843141({"errors":[],"success":1});
 			// or
-			//jsonp1303925617610({"errors":["Invalid Captcha Entry"],"success":0});
-			
-//			
-//
-//			List<NameValuePair> nvps = new ArrayList<NameValuePair>();
-//			nvps.add(new BasicNameValuePair("char", "Stringstix"));
-//			nvps.add(new BasicNameValuePair("vote5", "Vote"));
-//
-//			httpost.setEntity(new UrlEncodedFormEntity(nvps, HTTP.UTF_8));
-//
-//			response = httpclient.execute(httpost);
-//			entity = response.getEntity();
-//
-//			System.out.println("Login form get: " + response.getStatusLine());
-//
-//			// retrieve the output and display it in console
-//			System.out.print(convertInputStreamToString(response.getEntity().getContent()));
-//
-//			EntityUtils.consume(entity);
-//
-//			System.out.println("Post logon cookies:");
-//			cookies = httpclient.getCookieStore().getCookies();
-//			if (cookies.isEmpty()) {
-//				System.out.println("None");
-//			} else {
-//				for (int i = 0; i < cookies.size(); i++) {
-//					System.out.println("- " + cookies.get(i).toString());
-//				}
-//			}
+			// jsonp1303925617610({"errors":["Invalid Captcha Entry"],"success":0});
+
+			// //now either do it again if success is 0
+			// //or sleep until its time to vote again
+			if (voteResponseObject.getSuccess() == 0) {
+				// it failed
+				return false;
+			} else if (voteResponseObject.getSuccess() == 1) {
+				// it passed
+				return true;
+			} else {
+				// im gonna go with it failed
+				return false;
+			}
+
+			//			
+			//
+			// List<NameValuePair> nvps = new ArrayList<NameValuePair>();
+			// nvps.add(new BasicNameValuePair("char", "Stringstix"));
+			// nvps.add(new BasicNameValuePair("vote5", "Vote"));
+			//
+			// httpost.setEntity(new UrlEncodedFormEntity(nvps, HTTP.UTF_8));
+			//
+			// response = httpclient.execute(httpost);
+			// entity = response.getEntity();
+			//
+			// System.out.println("Login form get: " +
+			// response.getStatusLine());
+			//
+			// // retrieve the output and display it in console
+			// System.out.print(convertInputStreamToString(response.getEntity().getContent()));
+			//
+			// EntityUtils.consume(entity);
+			//
+			// System.out.println("Post logon cookies:");
+			// cookies = httpclient.getCookieStore().getCookies();
+			// if (cookies.isEmpty()) {
+			// System.out.println("None");
+			// } else {
+			// for (int i = 0; i < cookies.size(); i++) {
+			// System.out.println("- " + cookies.get(i).toString());
+			// }
+			// }
 
 		} finally {
 			// When HttpClient instance is no longer needed,
 			// shut down the connection manager to ensure
 			// immediate deallocation of all system resources
 			httpclient.getConnectionManager().shutdown();
+		}
+	}
+
+	public static void downloadCaptchaImage(String imageURL) throws InterruptedException {
+
+		try {
+
+			// String imageURL =
+			// "http://redbulli.com/tumtumpa_usa_voting/images/captchas/c270411170633ae3e10.jpg";
+			String command = "wget -P /tmp/" + " " + imageURL;
+
+			// run the Unix "ps -ef" command
+			// using the Runtime exec method:
+			Process p = Runtime.getRuntime().exec(command);
+			p.waitFor();
+
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+
+	public static String reverseCaptcha(String imageName) {
+		String s = null;
+
+		try {
+
+			// String imageName = "/tmp/c270411160310c119d3.jpg";
+			String command = "gocr" + " " + "/tmp/" + imageName;
+
+			// run the Unix "ps -ef" command
+			// using the Runtime exec method:
+			Process p = Runtime.getRuntime().exec(command);
+
+			BufferedReader stdInput = new BufferedReader(new InputStreamReader(p.getInputStream()));
+
+			BufferedReader stdError = new BufferedReader(new InputStreamReader(p.getErrorStream()));
+
+			StringBuilder b = new StringBuilder();
+
+			// read the output from the command
+			// System.out.println("Here is the standard output of the command:\n");
+			while ((s = stdInput.readLine()) != null) {
+				b.append(s);
+			}
+
+			String result = b.toString();
+			result = result.replaceAll("\\W|_", "");
+			System.out.println(result);
+			return result;
+
+			// read any errors from the attempted command
+			// System.out.println("Here is the standard error of the command (if any):\n");
+			// while ((s = stdError.readLine()) != null) {
+			// System.out.println(s);
+			// }
+		} catch (IOException e) {
+			e.printStackTrace();
+			return "";
 		}
 	}
 

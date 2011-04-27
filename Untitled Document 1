@@ -1,0 +1,25 @@
+GET /tumtumpa_usa_voting/request.json.php?r=captcha&format=jsonp&callback=jsonp1303932458578&_=1303932483778 HTTP/1.1
+Host: redbulli.com
+Connection: keep-alive
+Referer: http://www.redbullusa.com/cs/Satellite/en_US/Red-Bull-Tum-Tum-Pa-Entries/001242989518239
+User-Agent: Mozilla/5.0 (X11; Linux i686) AppleWebKit/534.24 (KHTML, like Gecko) Chrome/11.0.696.57 Safari/534.24
+Accept: */*
+Accept-Encoding: gzip,deflate,sdch
+Accept-Language: en-US,en;q=0.8
+Accept-Charset: ISO-8859-1,utf-8;q=0.7,*;q=0.3
+
+HTTP/1.1 200 OK
+Date: Wed, 27 Apr 2011 19:28:03 GMT
+Server: Apache
+X-Powered-By: PHP/5.2.17
+Cache-Control: no-cache, must-revalidate
+Expires: Mon, 26 Jul 1997 05:00:00 GMT
+Content-Length: 80
+Connection: close
+Content-Type: application/json
+
+jsonp1303932458578({"errors":[],"cid":84959,"image":"c270411142803411080.jpg"});
+
+
+
+http://redbulli.com//tumtumpa_usa_voting/request.json.php?r=captcha&format=jsonp
